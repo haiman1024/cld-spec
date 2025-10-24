@@ -41,18 +41,8 @@
 ### 1. `@Origin` —— 世界初始契约（World Genesis Contract）
 
 ```clj
-@Enum[enum::cl::world::CausalTension] {
-  variants: [ determinism_vs_contingency, ...]
-}
-@Enum[enum::cl::world::TemporalTopology] {
-  variants: [ linear, cyclic, branching, fragmented, manifold, ... ]
-}
-;; 每个张力条目
-@Schema[schema::cl::world::CausalTensionSpec] {
-  tension: ref(@Enum[enum::cl::world::CausalTension]),
-  weight: integer  ;; ∈ [1, 100]
-}
-
+;; enum::cl::world::CausalTension
+;; enum::cl::world::TemporalTopology
 @Origin[origin::<universe_id>::<origin_name>] {
   causal_epoch: integer,    ;; MUST be ≥ 0. Defines the logical zero-point of causal numbering.
                             ;; Negative values are ILLEGAL and violate world genesis semantics.
@@ -73,8 +63,8 @@
 ### 2. `@Timeline` —— 时间拓扑
 
 ```clj
-@Enum[enum::cl::timeline::TimelineType] { variants: [ causal_manifold, event_graph, ... ] }
-@Enum[enum::cl::timeline::TimelineFeature] { variants: [ branching, converging, local_loop, time_jump, ... ] }
+;; enum::cl::timeline::TimelineType
+;; enum::cl::timeline::TimelineFeature
 @Timeline[timeline::<universe_id>::<timeline_name>] {
   type: ref(@Enum[enum::cl::timeline::TimelineType]::<variant>),
   features: [ ref(@Enum[enum::cl::timeline::TimelineFeature]::<variant>), ... ]
@@ -259,47 +249,19 @@
 > 所有结构字段（如 `tick_spec`, `tick_behavior`, `consistency_contract`）必须使用结构字面量，禁止 `ref(@Schema[...])`。
 
 ```clj
-@Enum[enum::cl::time::Unit] {
-  variants: [ nanosecond, microsecond, millisecond, second, minute, hour, day ]
-}
-@Enum[enum::cl::scheduler::Mode] {
-  variants: [ tick_based, event_driven, hybrid ]
-}
-@Enum[enum::cl::scheduler::ExecutionOrder] {
-  variants: [ sequential, parallel, dependency_graph ]
-}
-@Enum[enum::cl::scheduler::FailurePolicy] {
-  variants: [ halt_on_first, continue_all, rollback ]
-}
-;; ── 0. 时间间隔 ───────────────────────────────
-@Schema[schema::cl::time::TimeInterval] {
-  unit: ref(@Enum[enum::cl::time::Unit]),
-  value: integer  ;; ≥1
-}
-;; ── 1. 节奏规范 ───────────────────────────────
-@Schema[schema::cl::scheduler::TickSpec] {
-  interval: ref(@Schema[schema::cl::time::TimeInterval]),
-  phase_offset?: integer,
-  max_jitter?: ref(@Schema[schema::cl::time::TimeInterval])
-}
-;; ── 2. 执行行为 ───────────────────────────────
-@Schema[schema::cl::scheduler::TickBehavior] {
-  effects: [ ref(@Effect[effect::<universe_id>::<domain>::<effect_name>]) ],
-  execution_order: ref(@Enum[enum::cl::scheduler::ExecutionOrder]),
-  failure_policy: ref(@Enum[enum::cl::scheduler::FailurePolicy])
-}
-;; ── 3. 一致性契约 ─────────────────────────────
-@Schema[schema::cl::scheduler::ConsistencyContract] {
-  enforce_timeline: boolean,
-  enforce_anchors: boolean,
-  allow_retcon?: boolean
-}
-
-;; ── 调度器定义 ───────────────────────────────
+;; enum::cl::time::Unit
+;; enum::cl::scheduler::Mode
+;; enum::cl::scheduler::ExecutionOrder
+;; enum::cl::scheduler::FailurePolicy
+;; schema::cl::time::TimeInterval
+;; schema::cl::scheduler::TickSpec
+;; schema::cl::scheduler::TickBehavior
+;; schema::cl::scheduler::ConsistencyContract
 @Scheduler[scheduler::<universe_id>::<scheduler_name>] {
   mode: ref(@Enum[enum::cl::scheduler::Mode]::<variant>),
 
   ;; 仅 tick_based / hybrid
+  ;; schema::cl::scheduler::TickSpec
   tick_spec?: {
     interval: {
       unit: ref(@Enum[enum::cl::time::Unit]::<unit>),
@@ -313,6 +275,7 @@
   },
 
   ;; 仅 tick_based / hybrid
+  ;; schema::cl::scheduler::TickBehavior
   tick_behavior?: {
     effects: [ ref(@Effect[effect::<universe_id>::<domain>::<effect_name>]) ],
     execution_order: ref(@Enum[enum::cl::scheduler::ExecutionOrder]::<variant>),
@@ -335,6 +298,7 @@
   ],
 
   ;; 所有模式必需
+  ;; schema::cl::scheduler::ConsistencyContract
   consistency_contract: {
     enforce_timeline: boolean,
     enforce_anchors: boolean,
@@ -356,9 +320,7 @@
 ### 8. `@Era` —— 历史语义层
 
 ```clj
-@Enum[enum::cl::era::EraTag] {
-  variants: [ technological, ... ]
-}
+;; enum::cl::era::EraTag
 @Era[era::<universe_id>::<era_name>] {
   start_anchor: ref(@CoreEvent[core_event::<universe_id>::<domain>::<core_event_name>]),
   end_anchor?: ref(@CoreEvent[core_event::<universe_id>::<domain>::<core_event_name>]),
@@ -374,22 +336,15 @@
 > 提示工程接口
 
 ```clj
-@Enum[enum::cl::behavior::Role] {
-  variants: [ system, user, assistant, tool, critic, planner, observer ]
-}
-@Enum[enum::cl::behavior::StructuredFormat] {
-  variants: [ json, yaml, toml, xml, markdown, edn, protobuf_text, ... ]
-}
-@Enum[enum::cl::behavior::ModelClass] {
-  variants: [ text_gen, reasoning, multimodal, agent, ... ]
-}
-@Enum[enum::cl::behavior::KnowledgeInjectionMode] {
-  variants: [ full_horizon, memory_only, none, context_window_only, time_window_only, ... ]
-}
+;; enum::cl::behavior::Role
+;; enum::cl::behavior::StructuredFormat
+;; enum::cl::behavior::ModelClass
+;; enum::cl::behavior::KnowledgeInjectionMode
+;; enum::cl::slot::SlotType
+;; enum::cl::slot::SlotAccessMode
+;; enum::cl::slot::SlotDecayMode
 ;; ── instruction types ───────────────────────────────
-@Schema[schema::cl::behavior::instruction::InlineText] {
-  content: string
-}
+;; schema::cl::behavior::instruction::InlineText
 @Schema[schema::cl::behavior::instruction::Structured] {
   format: ref(@Enum[enum::cl::behavior::StructuredFormat]::<variant>),
   payload_schema: ref(@Schema[schema::<universe_id>::<domain>::<name>])
@@ -411,9 +366,8 @@
   }
 }
 ;; ── output_format types ───────────────────────────────
-@Schema[schema::cl::behavior::output_format::NaturalLanguage] {
-  style_hint: string
-}
+;; schema::cl::behavior::output_format::NaturalLanguage
+;; schema::cl::behavior::output_format::Structured
 @Schema[schema::cl::behavior::output_format::Structured] {
   format: ref(@Enum[enum::cl::behavior::StructuredFormat]::<variant>),
   payload_schema: ref(@Schema[schema::<universe_id>::<domain>::<name>])
@@ -434,13 +388,9 @@
     description?: string
   }
 }
-;; ── 系统级基础 Schema（由 cl 宇宙提供，用户不可覆盖） ───────────────
-@Schema[schema::cl::behavior::ImplementationSpec] {
-  model_class: ref(@Enum[enum::cl::behavior::ModelClass]),
-  model_name: string,
-  temperature: float
-}
-;; ── 用户可定义的 StateSlot（引用上述 Schema） ───────────────────────
+;; ── 系统级基础 Schema（由 cl 宇宙） ───────────────
+;; schema::cl::behavior::ImplementationSpec
+;; ── 用户可定义 StateSlot（引用上述 Schema） ───────────────────────
 @StateSlot[slot::<universe_id>::behavior::implementation::<name>] {
   schema: ref(@Schema[schema::cl::behavior::ImplementationSpec])
         | ref(@Schema[schema::<universe_id>::behavior::ImplementationSpec]),
@@ -448,10 +398,14 @@
   metadata: {
     type: ref(@Enum[enum::cl::slot::SlotType]::structured),
     access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only),
+    decay?: {
+      mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::<variant>),
+      rate?: float
+    },
     description?: string
   }
 }
-;; ── 行为发射器（统一引用式结构） ───────────────────────────────────
+;; ── 行为发射器 ───────────────────────────────────
 >>BehaviorEmitter[emit::<universe_id>::<domain>::<emitter_name>] {
   prompt_engine: {
     role: ref(@Enum[enum::cl::behavior::Role]::<variant>)
@@ -475,10 +429,9 @@
 ### 10. `@Horizon` —— 信息视界
 
 ```clj
-@Enum[enum::cl::horizon::HorizonType] { variants: [ causal_past, era_limited, omniscient, ... ] }
-@Enum[enum::cl::horizon::PropheticScope] { variants: [ vision, dream, oracle, echo, ... ] }
-@Enum[enum::cl::horizon::AmbiguityLevel] { variants: [ low, medium, high, ... ] }
-
+;; enum::cl::horizon::HorizonType
+;; enum::cl::horizon::PropheticScope
+;; enum::cl::horizon::AmbiguityLevel
 @Horizon[horizon::<universe_id>::<horizon_name>] {
   type: ref(@Enum[enum::cl::horizon::HorizonType]::<variant>),
   prophetic_ability?: {
@@ -508,9 +461,10 @@
 #### 预定义枚举（系统级）
 
 ```clj
-@Enum[enum::cl::core::ComparisonOp] { variants: [ eq, ne, lt, le, gt, ge, in, not_in, ... ] }
-@Enum[enum::cl::core::LogicalOp] { variants: [ and, or, ... ] }
-@Enum[enum::cl::core::StateOperation] { variants: [ set, add, subtract, multiply, divide, append, ... ] }
+;; enum::cl::core::ValueType
+;; enum::cl::core::ComparisonOp
+;; enum::cl::core::LogicalOp
+;; enum::cl::core::StateOperation
 ```
 
 ---
@@ -534,9 +488,9 @@
 }
 ```
 
-> ⚠️ 注意：以上三者为 系统级标准动作模板说明，实际使用时 必须创建具名实例（见下文）。
+> ⚠️ 注意：以上三者为 系统级动作模板（不可实例化，仅作语义契约），实际使用时 必须创建具名实例（见下文）。
 
-#### 示例：业务语义动作（具名实例，无泛型）
+#### 示例：业务语义动作
 
 ```clj
 @Action[action::example_world::spirit::grant_tenth_ring_to_tang_san] {
@@ -622,7 +576,7 @@
 | `boolean` | `true` / `false` |
 | `ref(@Enum[enum::<universe_id>::<domain>::<enum_name>])` | 枚举引用 |
 | `ref(@Schema[schema::<universe_id>::<domain>::<schema_name>])` | 嵌套结构引用 |
-| `[ <type_spec> ]` | 同质列表（元素类型一致） |
+| `[ <type_spec> ]` | 同质列表 |
 
 ---
 
@@ -656,11 +610,11 @@
 |原语类型|路径前缀示例|说明|
 |---|---|---|
 |`@World`|`world::<universe_id>::<name>`|宇宙/世界实例|
-|`@Niche`|`entity::<universe_id>::<category>::<name>`|实体实例（主要用例）|
+|`@Niche`|`entity::<universe_id>::<category>::<name>`|实体实例|
 |`@Event`|`event::<universe_id>::<domain>::<name>`|用户定义事件|
 |`@CoreEvent`|`core_event::<universe_id>::<domain>::<name>`|系统事件|
 |`@Era`|`era::<universe_id>::<name>`|时代/纪元|
-|`@Relation`|`relation::<universe_id>::<domain>::<name>`|支持元关系（relation about relation）|
+|`@Relation`|`relation::<universe_id>::<domain>::<name>`|支持元关系|
 
 #### 🔒 加载器验证规则
 
@@ -703,12 +657,10 @@
 
 ---
 
-#### 🔧 系统级枚举依赖（引擎预置 · 不可覆盖）
+#### 🔧 系统级枚举依赖
 
 ```clj
-@Enum[enum::cl::constraint::ConstraintViolationPolicy] {
-  variants: [ halt, rollback, log_and_continue, emit_event ]
-}
+;; enum::cl::constraint::ConstraintViolationPolicy
 ```
 
 | 策略 | 语义 | 使用约束 |
@@ -722,7 +674,7 @@
 
 ---
 
-#### 📍 归属与激活规则（路径即作用域）
+#### 📍 归属与激活规则
 
 `@Constraint` **本身无执行上下文**，必须被以下实体**显式引用**才能生效：
 
@@ -799,10 +751,9 @@
 ### 7. `@StateSlot` —— 状态的最小存在单元
 
 ```clj
-@Enum[enum::cl::slot::SlotType] { variants: [ discrete, continuous, structured, ... ] }
-@Enum[enum::cl::slot::SlotAccessMode] { variants: [ read_only, mutable, transient, ... ] }
-@Enum[enum::cl::slot::SlotDecayMode] { variants: [ none, linear_per_tick, exponential, ... ] }
-
+;; enum::cl::slot::SlotType
+;; enum::cl::slot::SlotAccessMode
+;; enum::cl::slot::SlotDecayMode
 @StateSlot[slot::<universe_id>::<domain>::<slot_name>] {
   schema: ref(@Schema[schema::<universe_id>::<domain>::<schema_name>]),
   init: <literal_matching_schema>,
@@ -899,21 +850,10 @@
 #### 系统级枚举
 
 ```clj
-@Enum[enum::cl::value_expr::ExprNodeType] {
-  variants: [ literal, slot_ref, aggregate, binary_op, exists, time_window, ... ]
-}
-
-@Enum[enum::cl::value_expr::AggregateFunc] {
-  variants: [ sum, count, avg, min, max, distinct_count, ... ]
-}
-
-@Enum[enum::cl::value_expr::ArithmeticOp] {
-  variants: [ add, subtract, multiply, divide, modulo, ... ]
-}
-
-@Enum[enum::cl::value_expr::WindowAggregate] {
-  variants: [ count, latest, earliest, exists, ... ]
-}
+;; enum::cl::value_expr::ExprNodeType
+;; enum::cl::value_expr::AggregateFunc
+;; enum::cl::value_expr::ArithmeticOp
+;; enum::cl::value_expr::WindowAggregate
 ```
 
 #### 📐 @ValueExpr 语法定义
@@ -937,7 +877,7 @@
   - 浮点数（如 `3.14`，**禁止 NaN/Inf**）
   - 字符串（如 `"hello"`，**必须双引号**）
   - 布尔（`true` / `false`）
-  - `null`（仅用于可空字段）
+  - `null`（仅当目标 @StateSlot 的 schema 允许可空时才合法）
 
 > ❌ 禁止：对象、数组、未转义字符串、表达式模板。
 
@@ -1152,16 +1092,13 @@
 > 路径前缀 <kind_prefix> 必须属于以下枚举之一：
 
 ```clj
-@Enum[enum::cl::collection::KindPrefix] {
-    variants: [
-        entity,     ;; 元素必须是 @Niche
-        action,     ;; 元素必须是 @Action
-        relation,   ;; 元素必须是 @Relation
-        predicate,  ;; 元素必须是 @Predicate
-        slot,       ;; 元素必须是 @StateSlot
-        collection  ;; 元素必须是 @Collection（支持嵌套）
-    ]
-}
+;; enum::cl::collection::KindPrefix
+;;  "entity",
+;;  "action",
+;;  "relation",
+;;  "predicate",
+;;  "slot",
+;;  "collection",
 ```
 
 #### 元素类型校验规则

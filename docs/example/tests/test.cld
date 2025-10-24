@@ -1,0 +1,275 @@
+;; =============================================
+;; 🧪 CLD v9 自测世界模型：self_test_world.cld
+;; ✅ 用途：验证 CLD 引擎对完整语义契约的支持
+;; ✅ 覆盖：全部 20 个原语 + 所有 cl:: 系统内容
+;; ✅ 合规：零 cl:: 用户定义，零模糊，零隐式
+;; =============================================
+
+;; ── 1. @Origin ────────────────────────────────
+@Origin[origin::self_test::genesis] {
+  causal_epoch: 0,
+  causal_tensions: [
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::determinism_vs_contingency), weight: 50 },
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::order_vs_chaos), weight: 30 },
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::permanence_vs_flux), weight: 20 }
+  ],
+  temporal_topology: ref(@Enum[enum::cl::world::TemporalTopology]::linear),
+  immutable_anchors: [
+    ref(@CoreEvent[core_event::self_test::system::world_boot])
+  ]
+}
+
+;; ── 2. @Timeline ──────────────────────────────
+@Timeline[timeline::self_test::main] {
+  type: ref(@Enum[enum::cl::timeline::TimelineType]::causal_manifold),
+  features: [
+    ref(@Enum[enum::cl::timeline::TimelineFeature]::branching)
+  ]
+}
+
+;; ── 3. @Era ───────────────────────────────────
+@Era[era::self_test::test_phase] {
+  start_anchor: ref(@CoreEvent[core_event::self_test::system::world_boot]),
+  tags: [ ref(@Enum[enum::cl::era::EraTag]::technological) ],
+  description: "Self-test execution era"
+}
+
+;; ── 4. @CoreEvent ─────────────────────────────
+@CoreEvent[core_event::self_test::system::world_boot] {
+  description: "World self-test boot event",
+  emotional_peak: 0
+}
+
+@CoreEvent[core_event::self_test::system::test_complete] {
+  description: "Self-test completed successfully",
+  emotional_peak: 100
+}
+
+;; ── 5. @Event ─────────────────────────────────
+@Event[event::self_test::system::slot_updated] {
+  description: "State slot updated during test",
+  emotional_peak: 10
+}
+
+;; ── 6. @Schema ────────────────────────────────
+@Schema[schema::self_test::data::TestRecord] {
+  counter: integer,
+  flag: boolean,
+  tag: string
+}
+
+;; ── 7. @StateSlot ─────────────────────────────
+@StateSlot[slot::self_test::system::test_counter] {
+  schema: ref(@Schema[schema::cl::core::ValueType::integer]),
+  init: { value: 0 },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::discrete),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::mutable),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+@StateSlot[slot::self_test::system::test_record] {
+  schema: ref(@Schema[schema::self_test::data::TestRecord]),
+  init: { counter: 0, flag: false, tag: "init" },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::mutable),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+;; ── 8. @Predicate ─────────────────────────────
+@Predicate[predicate::self_test::system::counter_lt_5] {
+  field: ref(@StateSlot[slot::self_test::system::test_counter]),
+  op: ref(@Enum[enum::cl::core::ComparisonOp]::lt),
+  value: 5
+}
+
+@Predicate[predicate::self_test::system::counter_ge_5] {
+  field: ref(@StateSlot[slot::self_test::system::test_counter]),
+  op: ref(@Enum[enum::cl::core::ComparisonOp]::ge),
+  value: 5
+}
+
+;; ── 9. @Constraint ────────────────────────────
+@Constraint[constraint::self_test::system::counter_non_negative] {
+  condition: {
+    field: ref(@StateSlot[slot::self_test::system::test_counter]),
+    op: ref(@Enum[enum::cl::core::ComparisonOp]::ge),
+    value: 0
+  },
+  on_violation: {
+    policy: ref(@Enum[enum::cl::constraint::ConstraintViolationPolicy]::halt),
+    message: "Counter must be non-negative"
+  }
+}
+
+;; ── 10. @Action ───────────────────────────────
+@Action[action::self_test::system::increment_counter] {
+  target_niche: ref(@Niche[entity::self_test::system::tester]),
+  slot: ref(@StateSlot[slot::self_test::system::test_counter]),
+  operation: ref(@Enum[enum::cl::core::StateOperation]::add),
+  operand: 1
+}
+
+@Action[action::self_test::system::emit_update_event] {
+  event: ref(@Event[event::self_test::system::slot_updated])
+}
+
+@Action[action::self_test::system::emit_completion] {
+  event: ref(@CoreEvent[core_event::self_test::system::test_complete])
+}
+
+;; ── 11. @Effect ───────────────────────────────
+@Effect[effect::self_test::system::update_and_emit] {
+  guard: ref(@Constraint[constraint::self_test::system::counter_non_negative]),
+  actions: [
+    ref(@Action[action::self_test::system::increment_counter]),
+    ref(@Action[action::self_test::system::emit_update_event])
+  ]
+}
+
+@Effect[effect::self_test::system::complete_test] {
+  actions: [
+    ref(@Action[action::self_test::system::emit_completion])
+  ]
+}
+
+;; ── 12. @Rule ─────────────────────────────────
+@Rule[rule::self_test::system::on_counter_lt_5] {
+  when: ref(@Predicate[predicate::self_test::system::counter_lt_5]),
+  then_emit: ref(@Event[event::self_test::system::tick_event])
+}
+
+@Rule[rule::self_test::system::on_counter_ge_5] {
+  when: ref(@Predicate[predicate::self_test::system::counter_ge_5]),
+  then_emit: ref(@CoreEvent[core_event::self_test::system::test_complete])
+}
+
+;; ── 13. @Event (for rule trigger) ─────────────
+@Event[event::self_test::system::tick_event] {
+  description: "Tick event to drive counter",
+  emotional_peak: 5,
+  effects: [ ref(@Effect[effect::self_test::system::update_and_emit]) ]
+}
+
+;; ── 14. @Horizon ──────────────────────────────
+@Horizon[horizon::self_test::blind] {
+  type: ref(@Enum[enum::cl::horizon::HorizonType]::blind)
+}
+
+;; ── 15. @BehaviorEmitter ──────────────────────
+@StateSlot[slot::self_test::behavior::instruction::test_prompt] {
+  schema: ref(@Schema[schema::cl::behavior::instruction::InlineText]),
+  init: { content: "Respond with 'OK'." },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::discrete),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+@StateSlot[slot::self_test::behavior::output_format::nl] {
+  schema: ref(@Schema[schema::cl::behavior::output_format::NaturalLanguage]),
+  init: { style_hint: "concise" },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::discrete),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+@StateSlot[slot::self_test::behavior::implementation::test_model] {
+  schema: ref(@Schema[schema::cl::behavior::ImplementationSpec]),
+  init: {
+    model_class: ref(@Enum[enum::cl::behavior::ModelClass]::text_gen),
+    model_name: "test-model-1",
+    temperature: 0.0
+  },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+>>BehaviorEmitter[emit::self_test::system::test_emitter] {
+  prompt_engine: {
+    role: ref(@Enum[enum::cl::behavior::Role]::system),
+    instruction: ref(@StateSlot[slot::self_test::behavior::instruction::test_prompt]),
+    output_format: ref(@StateSlot[slot::self_test::behavior::output_format::nl]),
+    knowledge_injection: ref(@Enum[enum::cl::behavior::KnowledgeInjectionMode]::none)
+  },
+  implementation: ref(@StateSlot[slot::self_test::behavior::implementation::test_model])
+}
+
+;; ── 16. @Niche ────────────────────────────────
+@Niche[entity::self_test::system::tester] {
+  owns_slots: [
+    ref(@StateSlot[slot::self_test::system::test_counter]),
+    ref(@StateSlot[slot::self_test::system::test_record])
+  ],
+  constraints: [ ref(@Constraint[constraint::self_test::system::counter_non_negative]) ],
+  behavior_emergence: ref(>>BehaviorEmitter[emit::self_test::system::test_emitter]),
+  information_horizon: ref(@Horizon[horizon::self_test::blind]),
+  lifecycle: {
+    activation_anchor: ref(@CoreEvent[core_event::self_test::system::world_boot]),
+    valid_eras: [ ref(@Era[era::self_test::test_phase]) ]
+  }
+}
+
+;; ── 17. @Scheduler ────────────────────────────
+@Scheduler[scheduler::self_test::tick_scheduler] {
+  mode: ref(@Enum[enum::cl::scheduler::Mode]::tick_based),
+  tick_spec: {
+    interval: { unit: ref(@Enum[enum::cl::time::Unit]::second), value: 1 }
+  },
+  tick_behavior: {
+    effects: [ ref(@Effect[effect::self_test::system::update_and_emit]) ],
+    execution_order: ref(@Enum[enum::cl::scheduler::ExecutionOrder]::sequential),
+    failure_policy: ref(@Enum[enum::cl::scheduler::FailurePolicy]::halt_on_first)
+  },
+  consistency_contract: {
+    enforce_timeline: true,
+    enforce_anchors: true,
+    allow_retcon: false
+  }
+}
+
+;; ── 18. @Relation ─────────────────────────────
+@Enum[enum::self_test::relation::TestRelationType] {
+  variants: [ test_link ]
+}
+
+@Relation[relation::self_test::system::tester_to_boot] {
+  type: ref(@Enum[enum::self_test::relation::TestRelationType]::test_link),
+  source: ref(@Niche[entity::self_test::system::tester]),
+  target: ref(@CoreEvent[core_event::self_test::system::world_boot]),
+  strength: 1.0
+}
+
+;; ── 19. @Collection ───────────────────────────
+@Collection[entity::self_test::system::all_testers] {
+  elements: [ ref(@Niche[entity::self_test::system::tester]) ]
+}
+
+@Collection[action::self_test::system::all_actions] {
+  elements: [
+    ref(@Action[action::self_test::system::increment_counter]),
+    ref(@Action[action::self_test::system::emit_update_event])
+  ]
+}
+
+;; ── 20. @World ────────────────────────────────
+@World[world::self_test] {
+  origin: ref(@Origin[origin::self_test::genesis]),
+  timeline: ref(@Timeline[timeline::self_test::main]),
+  entities: [ ref(@Niche[entity::self_test::system::tester]) ],
+  constraints: [ ref(@Constraint[constraint::self_test::system::counter_non_negative]) ],
+  rules: [
+    ref(@Rule[rule::self_test::system::on_counter_lt_5]),
+    ref(@Rule[rule::self_test::system::on_counter_ge_5])
+  ],
+  scheduler: ref(@Scheduler[scheduler::self_test::tick_scheduler])
+}

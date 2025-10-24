@@ -1,0 +1,80 @@
+;; =============================================================================
+;; 📜 CLD 自举世界模型（Bootstrap World Model）
+;; ── 严格遵循 CLD v9 规范 · 完整 · 自洽 · 可验证 · 零外部依赖
+;; ── universe_id = "cl" 为系统保留，此处为演示自举逻辑，实际引擎中此文件由 CLD 内置
+;; =============================================================================
+
+@Origin[origin::cl::genesis] {
+  causal_epoch: 0,
+  causal_tensions: [
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::determinism_vs_contingency), weight: 33 },
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::order_vs_chaos), weight: 33 },
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::permanence_vs_flux), weight: 34 }
+  ],
+  temporal_topology: ref(@Enum[enum::cl::world::TemporalTopology]::linear),
+  immutable_anchors: [
+    ref(@CoreEvent[core_event::cl::system::bootstrap_complete])
+  ]
+}
+
+@Timeline[timeline::cl::system] {
+  type: ref(@Enum[enum::cl::timeline::TimelineType]::causal_manifold),
+  features: []
+}
+
+@CoreEvent[core_event::cl::system::bootstrap_complete] {
+  description: "CLD 引擎完成自举，系统宇宙就绪",
+  emotional_peak: 0
+}
+
+@Niche[entity::cl::system::core] {
+  owns_slots: [
+    ref(@StateSlot[slot::cl::system::ready])
+  ],
+  lifecycle: {
+    activation_anchor: ref(@CoreEvent[core_event::cl::system::bootstrap_complete]),
+    valid_eras: []
+  }
+}
+
+@StateSlot[slot::cl::system::ready] {
+  schema: ref(@Schema[schema::cl::system::ReadyFlag]),
+  init: { value: true },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::discrete),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only),
+    description: "系统就绪标志"
+  }
+}
+
+@Schema[schema::cl::system::ReadyFlag] {
+  value: boolean
+}
+
+@World[world::cl] {
+  origin: ref(@Origin[origin::cl::genesis]),
+  timeline: ref(@Timeline[timeline::cl::system]),
+  entities: [
+    ref(@Niche[entity::cl::system::core])
+  ],
+  constraints: [],
+  rules: [],
+  scheduler: ref(@Scheduler[scheduler::cl::tickless])
+}
+
+@Scheduler[scheduler::cl::tickless] {
+  mode: ref(@Enum[enum::cl::scheduler::Mode]::event_driven),
+  event_triggers: [],
+  consistency_contract: {
+    enforce_timeline: true,
+    enforce_anchors: true,
+    allow_retcon: false
+  }
+}
+
+;; =============================================================================
+;; ✅ 自举完成：此模型仅用于声明 CLD 引擎自身的最小存在契约
+;; ── 所有 enum::cl::...、schema::cl::...、action::cl::system::... 均由引擎预置
+;; ── 用户宇宙不得定义 universe_id = "cl"
+;; ── 此文件在真实系统中为隐式存在，不需用户书写，但语义必须如此
+;; =============================================================================

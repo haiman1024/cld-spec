@@ -1,0 +1,315 @@
+@Enum[enum::cld_self_test::system::TestStatus] {
+  variants: [ pending, passed, failed ]
+}
+
+@Schema[schema::cld_self_test::system::TestLogEntry] {
+  test_id: string,
+  status: ref(@Enum[enum::cld_self_test::system::TestStatus]),
+  timestamp: integer
+}
+
+
+@Action[action::cld_self_test::system::increment_test_counter] {
+  target_niche: ref(@Niche[entity::cld_self_test::system::verifier]),
+  slot: ref(@StateSlot[slot::cld_self_test::system::test_counter]),
+  operation: ref(@Enum[enum::cl::core::StateOperation]::add),
+  operand: 1
+}
+
+@Action[action::cld_self_test::system::log_test_result] {
+  target_niche: ref(@Niche[entity::cld_self_test::system::verifier]),
+  slot: ref(@StateSlot[slot::cld_self_test::system::test_log]),
+  operation: ref(@Enum[enum::cl::core::StateOperation]::append),
+  operand: {
+    test_id: "CLD-001",
+    status: ref(@Enum[enum::cld_self_test::system::TestStatus]::passed),
+    timestamp: 0
+  }
+}
+
+@Effect[effect::cld_self_test::system::tick_increment] {
+  actions: [
+    ref(@Action[action::cld_self_test::system::increment_test_counter]),
+    ref(@Action[action::cld_self_test::system::log_test_result])
+  ]
+}
+
+@Rule[rule::cld_self_test::system::on_test_passed_emit_next] {
+  when: ref(@Predicate[Predicate::cld_self_test::system::test_counter_lt_5]),
+  then_emit: ref(@Event[event::cld_self_test::system::test_passed])
+}
+
+@Rule[rule::cld_self_test::system::on_all_tests_passed_emit_success] {
+  when: ref(@Predicate[Predicate::cld_self_test::system::test_counter_eq_5]),
+  then_emit: ref(@CoreEvent[core_event::cld_self_test::system::all_tests_passed])
+}
+
+
+@Era[era::cld_self_test::setup_phase] {
+  start_anchor: ref(@CoreEvent[core_event::cld_self_test::system::world_boot]),
+  end_anchor: ref(@Event[event::cld_self_test::system::test_passed]),
+  tags: [ ref(@Enum[enum::cl::era::EraTag]::verification) ]
+}
+
+@Era[era::cld_self_test::validation_phase] {
+  start_anchor: ref(@Event[event::cld_self_test::system::test_passed])
+}
+
+@Horizon[horizon::cld_self_test::full_past] {
+  type: ref(@Enum[enum::cl::horizon::HorizonType]::causal_past)
+}
+
+@Niche[entity::cld_self_test::system::verifier] {
+  owns_slots: [
+    ref(@StateSlot[slot::cld_self_test::system::test_counter]),
+    ref(@StateSlot[slot::cld_self_test::system::test_log])
+  ],
+  lifecycle: {
+    activation_anchor: ref(@CoreEvent[core_event::cld_self_test::system::world_boot]),
+    valid_eras: [
+      ref(@Era[era::cld_self_test::setup_phase]),
+      ref(@Era[era::cld_self_test::validation_phase])
+    ],
+    era_behaviors: [
+      {
+        era: ref(@Era[era::cld_self_test::setup_phase]),
+        behavior_emergence: ref(>>BehaviorEmitter[emit::cld_self_test::system::init_verifier])
+      },
+      {
+        era: ref(@Era[era::cld_self_test::validation_phase]),
+        behavior_emergence: ref(>>BehaviorEmitter[emit::cld_self_test::system::run_verification])
+      }
+    ]
+  },
+  information_horizon: ref(@Horizon[horizon::cld_self_test::full_past])
+}
+
+@Niche[entity::cld_self_test::citizen::alice] {
+  owns_slots: [ ref(@StateSlot[slot::cld_self_test::citizen::score]) ]
+}
+@Niche[entity::cld_self_test::citizen::bob] {
+  owns_slots: [ ref(@StateSlot[slot::cld_self_test::citizen::score]) ]
+}
+
+@StateSlot[slot::cld_self_test::behavior::instruction::verifier_init] {
+  schema: ref(@Schema[schema::cl::behavior::instruction::InlineText]),
+  init: { content: "初始化验证器状态" },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only)
+  }
+}
+
+@StateSlot[slot::cld_self_test::behavior::output_format::verifier_log] {
+  schema: ref(@Schema[schema::cl::behavior::output_format::Structured]),
+  init: {
+    format: ref(@Enum[enum::cl::behavior::StructuredFormat]::json),
+    payload_schema: ref(@Schema[schema::cld_self_test::system::TestLogEntry])
+  },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only)
+  }
+}
+
+@StateSlot[slot::cld_self_test::behavior::implementation::reasoner] {
+  schema: ref(@Schema[schema::cl::behavior::ImplementationSpec]),
+  init: {
+    model_class: ref(@Enum[enum::cl::behavior::ModelClass]::reasoning),
+    model_name: "cld-verifier-v1",
+    temperature: 0.0
+  },
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::read_only)
+  }
+}
+
+@StateSlot[slot::cld_self_test::system::test_counter] {
+  schema: ref(@Schema[schema::cl::core::Integer]),
+  init: 0,
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::mutable),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+@StateSlot[slot::cld_self_test::system::test_log] {
+  schema: [ ref(@Schema[schema::cld_self_test::system::TestLogEntry]) ],
+  init: [],
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::mutable),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+@StateSlot[slot::cld_self_test::citizen::score] {
+  schema: ref(@Schema[schema::cl::core::Integer]),
+  init: 0,
+  metadata: {
+    type: ref(@Enum[enum::cl::slot::SlotType]::structured),
+    access: ref(@Enum[enum::cl::slot::SlotAccessMode]::mutable),
+    decay: { mode: ref(@Enum[enum::cl::slot::SlotDecayMode]::none) }
+  }
+}
+
+>>BehaviorEmitter[emit::cld_self_test::system::init_verifier] {
+  prompt_engine: {
+    role: ref(@Enum[enum::cl::behavior::Role]::system),
+    instruction: ref(@StateSlot[slot::cld_self_test::behavior::instruction::verifier_init]),
+    output_format: ref(@StateSlot[slot::cld_self_test::behavior::output_format::verifier_log]),
+    knowledge_injection: ref(@Enum[enum::cl::behavior::KnowledgeInjectionMode]::full_horizon)
+  },
+  implementation: ref(@StateSlot[slot::cld_self_test::behavior::implementation::reasoner])
+}
+
+>>BehaviorEmitter[emit::cld_self_test::system::run_verification] {
+  prompt_engine: {
+    role: ref(@Enum[enum::cl::behavior::Role]::assistant),
+    instruction: ref(@StateSlot[slot::cld_self_test::behavior::instruction::verifier_init]),
+    output_format: ref(@StateSlot[slot::cld_self_test::behavior::output_format::verifier_log]),
+    knowledge_injection: ref(@Enum[enum::cl::behavior::KnowledgeInjectionMode]::full_horizon)
+  },
+  implementation: ref(@StateSlot[slot::cld_self_test::behavior::implementation::reasoner])
+}
+
+@Relation[relation::cld_self_test::social::alice_knows_bob] {
+  type: ref(@Enum[enum::cld_self_test::social::RelationType]::knows),
+  source: ref(@Niche[entity::cld_self_test::citizen::alice]),
+  target: ref(@Niche[entity::cld_self_test::citizen::bob]),
+  strength: 0.8
+}
+
+@Enum[enum::cld_self_test::social::RelationType] {
+  variants: [ knows, opposes ]
+}
+
+@Predicate[Predicate::cld_self_test::system::test_counter_lt_5] {
+  field: ref(@StateSlot[slot::cld_self_test::system::test_counter]),
+  op: ref(@Enum[enum::cl::core::ComparisonOp]::le),
+  value: 4
+}
+
+@Predicate[Predicate::cld_self_test::system::test_counter_eq_5] {
+  field: ref(@StateSlot[slot::cld_self_test::system::test_counter]),
+  op: ref(@Enum[enum::cl::core::ComparisonOp]::eq),
+  value: 5
+}
+
+@Predicate[Predicate::cld_self_test::system::test_counter_le_5] {
+  field: ref(@StateSlot[slot::cld_self_test::system::test_counter]),
+  op: ref(@Enum[enum::cl::core::ComparisonOp]::le),
+  value: 5
+}
+
+@Constraint[constraint::cld_self_test::system::test_count_le_5] {
+  condition: ref(@Predicate[Predicate::cld_self_test::system::test_counter_le_5]),
+  on_violation: {
+    policy: ref(@Enum[enum::cl::constraint::ConstraintViolationPolicy]::halt),
+    message: "测试计数器不可超过5"
+  }
+}
+
+@Collection[entity::cld_self_test::system::all_citizens] {
+  elements: [
+    ref(@Niche[entity::cld_self_test::citizen::alice]),
+    ref(@Niche[entity::cld_self_test::citizen::bob])
+  ]
+}
+
+@ValueExpr[ValueExpr::cld_self_test::stats::citizen_count] {
+  expr: {
+    aggregate: {
+      func: ref(@Enum[enum::cl::value_expr::AggregateFunc]::count),
+      target: ref(@Collection[entity::cld_self_test::system::all_citizens]),
+      field_path: []
+    }
+  }
+}
+
+@ValueExpr[ValueExpr::cld_self_test::stats::total_score] {
+  expr: {
+    aggregate: {
+      func: ref(@Enum[enum::cl::value_expr::AggregateFunc]::sum),
+      target: ref(@Collection[entity::cld_self_test::system::all_citizens]),
+      field_path: [ "score" ]
+    }
+  }
+}
+
+@Collection[predicate::cld_self_test::system::all_test_predicates] {
+  elements: [
+    ref(@Predicate[Predicate::cld_self_test::system::test_counter_lt_5]),
+    ref(@Predicate[Predicate::cld_self_test::system::test_counter_eq_5])
+  ]
+}
+
+@CoreEvent[core_event::cld_self_test::system::world_boot] {
+  description: "世界启动锚点",
+  emotional_peak: 0
+}
+
+@CoreEvent[core_event::cld_self_test::system::all_tests_passed] {
+  description: "所有 CLD 能力验证通过",
+  emotional_peak: 100
+}
+
+@Event[event::cld_self_test::system::test_passed] {
+  description: "单个测试通过",
+  emotional_peak: 20
+}
+
+@Timeline[timeline::cld_self_test::main] {
+  type: ref(@Enum[enum::cl::timeline::TimelineType]::causal_manifold),
+  features: [ ref(@Enum[enum::cl::timeline::TimelineFeature]::branching) ]
+}
+
+
+@Origin[origin::cld_self_test::genesis] {
+  causal_epoch: 0,
+  causal_tensions: [
+    { tension: ref(@Enum[enum::cl::world::CausalTension]::determinism_vs_contingency), weight: 100 }
+  ],
+  temporal_topology: ref(@Enum[enum::cl::world::TemporalTopology]::linear),
+  immutable_anchors: [
+    ref(@CoreEvent[core_event::cld_self_test::system::world_boot]),
+    ref(@CoreEvent[core_event::cld_self_test::system::all_tests_passed])
+  ]
+}
+
+@Scheduler[scheduler::cld_self_test::tick_scheduler] {
+  mode: ref(@Enum[enum::cl::scheduler::Mode]::tick_based),
+  tick_spec: {
+    interval: { unit: ref(@Enum[enum::cl::time::Unit]::tick), value: 1 }
+  },
+  tick_behavior: {
+    effects: [ ref(@Effect[effect::cld_self_test::system::tick_increment]) ],
+    execution_order: ref(@Enum[enum::cl::scheduler::ExecutionOrder]::sequential),
+    failure_policy: ref(@Enum[enum::cl::scheduler::FailurePolicy]::halt_on_first)
+  },
+  consistency_contract: {
+    enforce_timeline: true,
+    enforce_anchors: true,
+    allow_retcon: false
+  }
+}
+
+@World[world::cld_self_test] {
+  origin: ref(@Origin[origin::cld_self_test::genesis]),
+  timeline: ref(@Timeline[timeline::cld_self_test::main]),
+  entities: [
+    ref(@Niche[entity::cld_self_test::system::verifier]),
+    ref(@Niche[entity::cld_self_test::citizen::alice]),
+    ref(@Niche[entity::cld_self_test::citizen::bob])
+  ],
+  constraints: [
+    ref(@Constraint[constraint::cld_self_test::system::test_count_le_5])
+  ],
+  rules: [
+    ref(@Rule[rule::cld_self_test::system::on_test_passed_emit_next]),
+    ref(@Rule[rule::cld_self_test::system::on_all_tests_passed_emit_success])
+  ],
+  scheduler: ref(@Scheduler[scheduler::cld_self_test::tick_scheduler])
+}
